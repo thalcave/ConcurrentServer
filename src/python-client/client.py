@@ -8,9 +8,8 @@ Send a file to a server
 import sys
 import socket
 import os
-import time
 
-from stat import *
+from stat import S_ISREG
 
 def receive_buf(sock, msglen):
     """Receives msglen from network"""
@@ -100,16 +99,16 @@ def start_client(port, filename):
     except socket.error, msg:
         sock.close()
         print "error: {0}".format(msg[1])
-    except Exception, e:
+    except Exception, exc:
         sock.close()
-        print "error {0}".format(e)
+        print "error {0}".format(exc)
     except:
         sock.close()
-        print "Unexpected error: {0}".sys.exc_info()[0]
+        print "Unexpected error: {0}".format(sys.exc_info()[0])
     finally:
         sock.close()
 
-if __name__ =='__main__':
+if __name__ == '__main__':
     if len(sys.argv) < 3:
         sys.exit('Usage {0} <port> <file_to_transfer>'.format(sys.argv[0]))
 
