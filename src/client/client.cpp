@@ -72,7 +72,9 @@ startClient(unsigned port, std::string const& fname)
 	fstat(read_fd.get(), &mstat);
 
 	char data_to_send[8];
-	memcpy(&data_to_send, &mstat.st_size, sizeof(mstat.st_size));
+	std::string tmp_str = boost::lexical_cast<std::string>(mstat.st_size);
+	strncpy(data_to_send, tmp_str.c_str(), 8);
+	//memcpy(&data_to_send, &mstat.st_size, sizeof(mstat.st_size));
 	sendBuf(sockfd.get(), data_to_send, 8);
 
 	const unsigned BUF_LEN = 65536;
@@ -81,6 +83,7 @@ startClient(unsigned port, std::string const& fname)
 	ssize_t read_bytes;
 	do
 	{
+		memset(buffer, '\0', BUF_LEN);
 		//read from file
 		read_bytes = read(read_fd.get(), buffer, BUF_LEN);
 		if (-1 == read_bytes && (errno != EAGAIN && errno != EINTR))

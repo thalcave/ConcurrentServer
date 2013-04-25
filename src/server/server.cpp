@@ -63,10 +63,10 @@ handleConnection(int sock)
 	sendBuf(sockfd.get(), OK.c_str(), MSG_SIZE+1);
 
 	//receive file size
-	size_t fsize;
+	
 	char buffer[8];
 	recvBuf(sockfd.get(), buffer, 8);
-	memcpy(&fsize, &buffer, sizeof(fsize));
+	size_t fsize = boost::lexical_cast<size_t>(std::string(buffer));
 
 	std::cout<<"receive file size: "<<fsize<<"\n";
 
