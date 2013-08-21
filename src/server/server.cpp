@@ -136,6 +136,11 @@ startServer(unsigned port)
 	{
 		throw std::runtime_error("error creating socket: " + std::string(strerror(errno)));
 	}
+	
+	//set SO_REUSEADDR so that bind will not fail because of TIME_WAIT state
+	int optval = 1;
+        if (-1 == ::setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)))
+		throw std::runtime_error("setsockopt() failed: " + std::string(strerror(errno)));
 
 	//bind
 	sockaddr_in m_addr;
