@@ -13,13 +13,14 @@
 #include <netdb.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/sendfile.h>
 
 #include "common/network.hpp"
 #include "common/protocol.hpp"
 
 
 void
-startClient(unsigned port, std::string const& fname)
+startClient(unsigned port, std::string const& fname, bool use_sendfile)
 {
 	//will throw if file does not exist/not regular/cannot open for read etc
 	scoped_descriptor read_fd(openFile(fname,  O_RDONLY));
@@ -71,30 +72,43 @@ startClient(unsigned port, std::string const& fname)
 	struct stat mstat = {0};
 	fstat(read_fd.get(), &mstat);
 
-	char data_to_send[8];
+	char data_to_send[100];
 	std::string tmp_str = boost::lexical_cast<std::string>(mstat.st_size);
-	strncpy(data_to_send, tmp_str.c_str(), 8);
+	strncpy(data_to_send, tmp_str.c_str(), 100);
 	//memcpy(&data_to_send, &mstat.st_size, sizeof(mstat.st_size));
-	sendBuf(sockfd.get(), data_to_send, 8);
+	sendBuf(sockfd.get(), data_to_send, 100);
 
-	const unsigned BUF_LEN = 65536;
-	char buffer[BUF_LEN];
-
-	ssize_t read_bytes;
-	do
+	if (!use_sendfile)
 	{
-		memset(buffer, '\0', BUF_LEN);
-		//read from file
-		read_bytes = read(read_fd.get(), buffer, BUF_LEN);
-		if (-1 == read_bytes && (errno != EAGAIN && errno != EINTR))
+		const unsigned BUF_LEN = 65536;
+		char buffer[BUF_LEN];
+
+		ssize_t read_bytes;
+		do
 		{
-			throw std::runtime_error("read(): " + std::string(strerror(errno)));
+			memset(buffer, '\0', BUF_LEN);
+			//read from file
+			read_bytes = read(read_fd.get(), buffer, BUF_LEN);
+			if (-1 == read_bytes && (errno != EAGAIN && errno != EINTR))
+			{
+				throw std::runtime_error("read(): " + std::string(strerror(errno)));
+			}
+
+			//send over network
+			sendBuf(sockfd.get(), buffer, BUF_LEN);
+
+		} while (read_bytes);
+	}
+	else	//use sendfile
+	{
+		ssize_t sent_bytes = ::sendfile(sockfd.get(), read_fd.get(), NULL, mstat.st_size);
+		if (-1 == sent_bytes)
+		{
+			::shutdown(sockfd.get(), SHUT_RDWR);
+			::close(sockfd.get());
+			throw std::runtime_error("sendfile(): " + std::string(strerror(errno)));
 		}
-
-		//send over network
-		sendBuf(sockfd.get(), buffer, BUF_LEN);
-
-	} while (read_bytes);
+	}
 
 	//receive answer
 	std::string answer = getAnswer(sockfd.get());
@@ -110,9 +124,9 @@ startClient(unsigned port, std::string const& fname)
 
 int main(int argc, char* argv[])
 {
-	if (argc != 3)
+	if (argc < 3 || argc > 4)
 	{
-		std::cerr<<"usage: ./client <port> <filename>\n";
+		std::cerr<<"usage: ./client <port> <filename> [1 - use sendfile]\n";
 		return -1;
 	}
 
@@ -123,10 +137,16 @@ int main(int argc, char* argv[])
 		std::cerr<<"cannot convert to unsigned : "<<argv[1]<<"\n";
 		return -2;
 	}
+	
+	bool use_sendfile(false);
+	if (4 == argc)
+	{
+		use_sendfile = true;
+	}
 
 	try
 	{
-		startClient(port, std::string(argv[2]));
+		startClient(port, std::string(argv[2]), use_sendfile);
 	} catch(std::runtime_error const& rte) {
 		std::cerr<<"Error: "<<rte.what()<<"\n";
 		return -3;

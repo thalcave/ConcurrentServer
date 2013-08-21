@@ -67,6 +67,14 @@ readBuf(int sockfd, void* buf, size_t buf_len)
 	memset(buf, '\0', buf_len);
 
 	int nread = ::recv(sockfd, buf, buf_len, 0);
+	
+	if (!nread && buf_len)	//received EOF while expecting to read something (something wrong happend at the other end)
+	{
+		throw std::runtime_error("recvBuf(): peer has performed orderly shutdown");
+	}
+	
+//	std::cout<<"ReadBuf recv: "<<nread<<"\n";
+
 	if (nread < 0)
 	{
 		throw std::runtime_error("recv(): " + std::string(strerror(errno)));
