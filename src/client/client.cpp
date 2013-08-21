@@ -18,6 +18,8 @@
 #include "common/network.hpp"
 #include "common/protocol.hpp"
 
+#define TCP_CORK 3
+
 
 void
 startClient(unsigned port, std::string const& fname, bool use_sendfile)
@@ -41,6 +43,12 @@ startClient(unsigned port, std::string const& fname, bool use_sendfile)
 
 	// make a socket:
 	scoped_descriptor sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	
+	//use TCP_CORK: the application instructs the OS not to send any packets unless they are full, or the application signals the OS to send all pending data
+	int optval = 1;
+        if (-1 == ::setsockopt(sockfd.get(), IPPROTO_TCP, TCP_CORK, &optval, sizeof(optval)))
+		throw std::runtime_error("setsockopt() failed: " + std::string(strerror(errno)));
+
 
 	// connect it to the address and port we passed in to getaddrinfo():
 	int connect_ret = connect(sockfd.get(), res->ai_addr, res->ai_addrlen);
