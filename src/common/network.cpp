@@ -81,39 +81,6 @@ readBuf(int sockfd, void* buf, size_t buf_len)
 	}
 
 	return nread;
-	
-	/*while (read < buf_len)
-	{
-		std::cout<<"read: "<<read<<"\n";
-		int nread = ::recv(sockfd, buf+read, buf_len, 0);
-		if (nread <= 0)
-		{
-			if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)	//interrupted by signal
-			{
-				continue;
-			}
-
-			if (nread < 0)
-			{
-				throw std::runtime_error("recv(): " + std::string(strerror(errno)));
-			}
-			//nread = 0 --> end
-			break;
-		}
-
-		read += nread;
-
-		std::cout<<"read: "<<read<<"\n";
-		std::cout<<"nread: "<<nread<<"\n";
-
-
-		if (!nread)
-		{
-			break;
-		}
-	}*/
-
-	//return read;
 }
 }
 
